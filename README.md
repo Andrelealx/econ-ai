@@ -11,7 +11,7 @@ Plataforma SaaS para:
 ## Stack
 
 - `api`: Node.js + Express + TypeScript + PostgreSQL
-- `web`: Vite (SPA em JavaScript)
+- `web`: React + TypeScript + Vite
 - IA: OpenAI (`OPENAI_API_KEY`) com fallback local
 - Mercado: B3 via `brapi` + fallback `stooq`
 
@@ -49,6 +49,16 @@ docker compose up -d
 ```bash
 cp api/.env.example api/.env
 ```
+
+Opcional para o frontend (`web/.env`):
+
+```bash
+VITE_API_BASE_URL=http://localhost:4010/api
+```
+
+Sem essa variavel, o frontend usa:
+- dev (`:5173`): `http://localhost:4010/api`
+- producao: `window.location.origin/api`
 
 4. Rode migrations e seed:
 
