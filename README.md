@@ -1,10 +1,12 @@
-# Money Copilot (SaaS Financeiro com IA)
+# econ-ai (SaaS Financeiro com IA)
 
 Plataforma SaaS para:
 - organizar renda, gastos, orcamentos e metas;
 - administrar carteira de investimentos;
 - analisar oportunidades de acoes com score quantitativo;
 - conversar com um consultor financeiro por IA.
+- executar acoes financeiras via chat (ex.: adicionar valor em meta).
+- testar o produto sem cadastro (modo convidado).
 
 ## Stack
 
@@ -66,14 +68,14 @@ npm run dev:web
 - Web: `http://localhost:5173`
 - API: `http://localhost:4010/api/health`
 
-## Usuario demo
+## Modo de teste sem cadastro
 
-- Email: `demo@moneycopilot.ai`
-- Senha: `Demo@1234`
+- No login, clique em `Testar agora sem cadastro`.
+- O sistema cria uma sessao experimental com dados simulados.
 
 ## Endpoints principais
 
-- Auth: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+- Auth: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/guest-session`, `GET /api/auth/me`
 - Dashboard: `GET /api/dashboard/summary`
 - Financas: `/api/finance/*`
 - Investimentos: `/api/investments/*`

@@ -5,6 +5,7 @@ import { getMonthRef, monthRange } from "../utils/date";
 import { createId } from "../utils/id";
 import { buildOpportunities } from "../services/opportunityEngine";
 import { generateAdvisorReply } from "../services/advisorService";
+import { tryExecuteGoalAction } from "../services/advisorActions";
 
 const messageSchema = z.object({
   message: z.string().min(4).max(2000)
@@ -62,8 +63,8 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
        GROUP BY b.category, b.monthly_limit`,
       [userId, start, end, monthRef]
     ),
-    pool.query<{ name: string; target_amount: string; current_amount: string; status: string }>(
-      `SELECT name, target_amount, current_amount, status
+    pool.query<{ id: string; name: string; target_amount: string; current_amount: string; status: string }>(
+      `SELECT id, name, target_amount, current_amount, status
        FROM goals
        WHERE user_id = $1
        ORDER BY created_at DESC
@@ -91,6 +92,35 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
 
   const symbols = watchlistResult.rows.map((row) => row.symbol);
   const opportunities = symbols.length ? await buildOpportunities(symbols) : [];
+  const userMessage = parsed.data.message.trim();
+
+  const goalsSnapshot = goalsResult.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    targetAmount: Number(row.target_amount),
+    currentAmount: Number(row.current_amount),
+    status: row.status
+  }));
+
+  const actionResolution = await tryExecuteGoalAction({
+    userId,
+    message: userMessage,
+    goals: goalsSnapshot
+  });
+
+  const performedAction = actionResolution.action;
+
+  const resolvedGoals = performedAction
+    ? goalsSnapshot.map((goal) =>
+        goal.id === performedAction.goalId
+          ? {
+              ...goal,
+              currentAmount: performedAction.updatedAmount,
+              status: performedAction.updatedAmount >= goal.targetAmount ? "completed" : goal.status
+            }
+          : goal
+      )
+    : goalsSnapshot;
 
   const context = {
     monthRef,
@@ -102,10 +132,10 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
       total: Number(row.total)
     })),
     budgetsOverLimit,
-    goals: goalsResult.rows.map((row) => ({
+    goals: resolvedGoals.map((row) => ({
       name: row.name,
-      targetAmount: Number(row.target_amount),
-      currentAmount: Number(row.current_amount),
+      targetAmount: row.targetAmount,
+      currentAmount: row.currentAmount,
       status: row.status
     })),
     opportunities: opportunities.slice(0, 5).map((row) => ({
@@ -116,8 +146,10 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
     }))
   };
 
-  const userMessage = parsed.data.message.trim();
-  const reply = await generateAdvisorReply(userMessage, context);
+  const reply = actionResolution.handled
+    ? actionResolution.message ??
+      "## Acao processada\nRecebi seu comando e finalizei a solicitacao com sucesso."
+    : await generateAdvisorReply(userMessage, context);
 
   await pool.query(
     `INSERT INTO ai_messages (id, user_id, role, content)
@@ -129,7 +161,8 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
   res.json({
     data: {
       message: reply,
-      context
+      context,
+      action: performedAction ?? null
     }
   });
 });

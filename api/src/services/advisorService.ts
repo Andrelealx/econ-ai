@@ -13,7 +13,7 @@ type AdvisorContext = {
 };
 
 const baseSystemPrompt = `
-Voce e um consultor financeiro pessoal para pessoas fisicas no Brasil.
+Voce e o consultor financeiro do econ-ai para pessoas fisicas no Brasil.
 Objetivo: gerar orientacoes praticas para controle de gastos, reserva de emergencia, quitacao de dividas e estrategia de investimentos.
 
 Regras:
@@ -22,6 +22,8 @@ Regras:
 - Prefira recomendacoes acionaveis em ate 30 dias.
 - Se falar de acoes, use linguagem educacional e de cenarios, nao recomendacao categórica.
 - Considere perfil moderado por padrao se o usuario nao informar.
+- Responda sempre em Markdown limpo, com secoes curtas e objetivas.
+- Use no maximo 6 bullets por secao.
 `.trim();
 
 let client: OpenAI | null = null;
@@ -37,34 +39,43 @@ function getOpenAIClient(): OpenAI | null {
 }
 
 function createFallbackAdvice(message: string, context: AdvisorContext): string {
+  const toBRL = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
   const projectedSavings = context.income - context.expenses;
   const overspending = context.budgetsOverLimit
     .slice(0, 3)
-    .map((item) => `- ${item.category}: gasto ${item.spent.toFixed(2)} vs limite ${item.limit.toFixed(2)}`)
+    .map((item) => `- **${item.category}**: gasto ${toBRL(item.spent)} vs limite ${toBRL(item.limit)}`)
     .join("\n");
 
   const opportunities = context.opportunities
     .slice(0, 3)
-    .map((item) => `- ${item.symbol}: score ${item.score}/100, sinal ${item.signal}, risco ${item.risk}`)
+    .map((item) => `- **${item.symbol}**: score ${item.score}/100, sinal ${item.signal}, risco ${item.risk}`)
     .join("\n");
 
   return [
-    `Pergunta recebida: ${message}`,
+    "## econ-ai | Consultoria Financeira",
+    `**Pergunta:** ${message}`,
     "",
-    `Resumo financeiro (${context.monthRef}): renda ${context.income.toFixed(2)}, gastos ${context.expenses.toFixed(2)}, poupanca estimada ${projectedSavings.toFixed(2)} (${context.savingsRate.toFixed(1)}%).`,
+    "### Diagnostico rapido",
+    `- Referencia: **${context.monthRef}**`,
+    `- Renda: **${toBRL(context.income)}**`,
+    `- Gastos: **${toBRL(context.expenses)}**`,
+    `- Poupanca estimada: **${toBRL(projectedSavings)}** (${context.savingsRate.toFixed(1)}%)`,
     "",
-    "Plano pratico para os proximos 30 dias:",
+    "### Plano para 30 dias",
     "1. Defina transferencia automatica para reserva no dia do recebimento (meta: 10% a 20% da renda).",
     "2. Corte 1 ou 2 categorias mais pressionadas e redirecione o valor para metas prioritarias.",
     "3. Se houver dividas caras, priorize amortizacao antes de aumentar risco na carteira.",
     "",
-    overspending ? `Categorias acima do orcamento:\n${overspending}` : "Nenhuma categoria acima do orcamento neste mes.",
+    overspending ? `### Categorias acima do orcamento\n${overspending}` : "### Categorias acima do orcamento\n- Nenhum estouro neste mes.",
     "",
     opportunities
-      ? `Radar de oportunidades (educacional, sem recomendacao direta):\n${opportunities}`
-      : "Sem oportunidades com dados suficientes no momento.",
+      ? `### Radar de oportunidades (educacional)\n${opportunities}`
+      : "### Radar de oportunidades (educacional)\n- Sem dados suficientes no momento.",
     "",
-    "Aviso: isso nao e recomendacao de investimento individual. Use como apoio para decidir com responsabilidade."
+    "### Aviso de risco",
+    "- Este conteudo e educacional e nao constitui recomendacao individual de investimento."
   ].join("\n");
 }
 
@@ -81,7 +92,7 @@ ${JSON.stringify(context, null, 2)}
 Pergunta do usuario:
 ${message}
 
-Responda em portugues do Brasil, objetivo e pratico.
+Responda em portugues do Brasil, objetivo e pratico, com formato Markdown.
 `.trim();
 
   const response = await openai.responses.create({

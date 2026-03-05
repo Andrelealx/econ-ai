@@ -1,12 +1,14 @@
 import "./styles.css";
 
+const APP_NAME = "econ-ai";
+
 const defaultApiBase = window.location.port === "5173"
   ? "http://localhost:4010/api"
   : `${window.location.origin}/api`;
 
 const state = {
-  token: localStorage.getItem("mc_token") || "",
-  apiBase: localStorage.getItem("mc_api_base") || defaultApiBase,
+  token: localStorage.getItem("econai_token") || "",
+  apiBase: defaultApiBase,
   user: null,
   monthRef: getMonthRef(),
   page: "dashboard",
@@ -23,14 +25,13 @@ function getMonthRef() {
 }
 
 function saveSession() {
-  localStorage.setItem("mc_token", state.token);
-  localStorage.setItem("mc_api_base", state.apiBase);
+  localStorage.setItem("econai_token", state.token);
 }
 
 function clearSession() {
   state.token = "";
   state.user = null;
-  localStorage.removeItem("mc_token");
+  localStorage.removeItem("econai_token");
 }
 
 function formatCurrency(value, currency = "BRL") {
@@ -100,18 +101,22 @@ function renderAuth(errorMessage = "") {
       <div class="auth-card">
         <aside class="auth-highlight">
           <div>
-            <h1>Money Copilot</h1>
+            <h1>${APP_NAME}</h1>
             <p style="margin-top:8px; color: var(--muted);">
-              Seu consultor financeiro com IA para organizar gastos, metas e oportunidades em acoes.
+              Seu sistema financeiro com IA para executar acoes reais, planejar metas e encontrar oportunidades de mercado.
             </p>
             <ul>
+              <li>Comando via chat: \"adicione R$ 200 na minha meta\"</li>
               <li>Resumo automatico de renda, gastos e poupanca</li>
               <li>Orcamentos por categoria com alertas</li>
               <li>Radar de oportunidades de mercado com score</li>
               <li>Chat de consultoria financeira com plano de acao</li>
             </ul>
           </div>
-          <p class="kbd">MVP SaaS pronto para Railway</p>
+          <div class="stack">
+            <button id="guest-login-btn" class="btn ghost" type="button">Testar agora sem cadastro</button>
+            <p class="kbd">Modo experimental com dados simulados.</p>
+          </div>
         </aside>
 
         <section class="stack">
@@ -120,12 +125,8 @@ function renderAuth(errorMessage = "") {
             <button class="tab ${state.authTab === "register" ? "active" : ""}" data-tab="register">Criar conta</button>
           </div>
 
-          <label>
-            URL da API
-            <input id="api-base-input" value="${escapeHtml(state.apiBase)}" />
-          </label>
-
           ${state.authTab === "login" ? renderLoginForm() : renderRegisterForm()}
+          <p class="kbd">A conexao com API e automatica neste ambiente.</p>
           ${errorMessage ? `<p style="color:#fecaca; font-size:13px;">${escapeHtml(errorMessage)}</p>` : ""}
         </section>
       </div>
@@ -139,11 +140,8 @@ function renderAuth(errorMessage = "") {
     });
   });
 
-  const apiBaseInput = document.getElementById("api-base-input");
-  apiBaseInput.addEventListener("change", () => {
-    state.apiBase = apiBaseInput.value.trim().replace(/\/$/, "");
-    saveSession();
-  });
+  const guestLoginButton = document.getElementById("guest-login-btn");
+  guestLoginButton?.addEventListener("click", handleGuestSession);
 
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
@@ -168,7 +166,7 @@ function renderLoginForm() {
         <input name="password" type="password" required />
       </label>
       <button class="btn" type="submit">Entrar</button>
-      <p class="kbd">Demo: demo@moneycopilot.ai / Demo@1234</p>
+      <p class="kbd">Dica: se quiser apenas testar, use \"Testar agora sem cadastro\".</p>
     </form>
   `;
 }
@@ -210,7 +208,6 @@ async function handleLogin(event) {
   const form = new FormData(event.currentTarget);
 
   try {
-    state.apiBase = document.getElementById("api-base-input").value.trim().replace(/\/$/, "");
     const response = await request("/auth/login", {
       method: "POST",
       body: {
@@ -233,8 +230,6 @@ async function handleRegister(event) {
   const form = new FormData(event.currentTarget);
 
   try {
-    state.apiBase = document.getElementById("api-base-input").value.trim().replace(/\/$/, "");
-
     const response = await request("/auth/register", {
       method: "POST",
       body: {
@@ -255,6 +250,21 @@ async function handleRegister(event) {
   }
 }
 
+async function handleGuestSession() {
+  try {
+    const response = await request("/auth/guest-session", {
+      method: "POST"
+    });
+
+    state.token = response.data.token;
+    state.user = response.data.user;
+    saveSession();
+    await bootstrapApp();
+  } catch (error) {
+    renderAuth(error.message || "Falha ao iniciar modo experimental");
+  }
+}
+
 async function loadMe() {
   const response = await request("/auth/me");
   state.user = response.data;
@@ -265,9 +275,14 @@ function renderShell() {
     <div class="shell">
       <aside class="sidebar">
         <div class="brand">
-          <h2>Money Copilot</h2>
+          <h2>${APP_NAME}</h2>
           <p>${escapeHtml(state.user?.fullName || "Usuario")}</p>
           <p>${escapeHtml(state.user?.email || "")}</p>
+          ${
+            state.user?.email?.endsWith("@econ-ai.local")
+              ? '<span class="badge" style="margin-top:8px;">Modo experimental</span>'
+              : ""
+          }
         </div>
 
         <nav class="nav" id="nav">
@@ -275,7 +290,7 @@ function renderShell() {
           <button data-page="transactions" class="${state.page === "transactions" ? "active" : ""}">Transacoes</button>
           <button data-page="planning" class="${state.page === "planning" ? "active" : ""}">Orcamentos e Metas</button>
           <button data-page="investments" class="${state.page === "investments" ? "active" : ""}">Investimentos</button>
-          <button data-page="advisor" class="${state.page === "advisor" ? "active" : ""}">IA Consultor</button>
+          <button data-page="advisor" class="${state.page === "advisor" ? "active" : ""}">Agente IA</button>
         </nav>
 
         <button id="logout-btn" class="btn secondary">Sair</button>
@@ -329,7 +344,7 @@ function pageTitle(page) {
     transactions: "Lancamentos e Extratos",
     planning: "Orcamentos e Metas",
     investments: "Investimentos e Oportunidades",
-    advisor: "Consultor IA"
+    advisor: "Agente IA econ-ai"
   };
 
   return titles[page] || "Painel";
@@ -1039,6 +1054,103 @@ async function renderInvestments() {
   });
 }
 
+function inlineMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  return html;
+}
+
+function markdownToSafeHtml(markdown) {
+  const lines = String(markdown || "").split("\n");
+  const output = [];
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) {
+      output.push("</ul>");
+      inUl = false;
+    }
+
+    if (inOl) {
+      output.push("</ol>");
+      inOl = false;
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      closeLists();
+      continue;
+    }
+
+    if (line.startsWith("### ")) {
+      closeLists();
+      output.push(`<h4 class="md-h3">${inlineMarkdown(line.slice(4))}</h4>`);
+      continue;
+    }
+
+    if (line.startsWith("## ")) {
+      closeLists();
+      output.push(`<h3 class="md-h2">${inlineMarkdown(line.slice(3))}</h3>`);
+      continue;
+    }
+
+    if (line.startsWith("> ")) {
+      closeLists();
+      output.push(`<blockquote class="md-quote">${inlineMarkdown(line.slice(2))}</blockquote>`);
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      if (inOl) {
+        output.push("</ol>");
+        inOl = false;
+      }
+
+      if (!inUl) {
+        output.push("<ul class=\"md-list\">");
+        inUl = true;
+      }
+
+      output.push(`<li>${inlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>`);
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      if (inUl) {
+        output.push("</ul>");
+        inUl = false;
+      }
+
+      if (!inOl) {
+        output.push("<ol class=\"md-list\">");
+        inOl = true;
+      }
+
+      output.push(`<li>${inlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`);
+      continue;
+    }
+
+    closeLists();
+    output.push(`<p class="md-p">${inlineMarkdown(line)}</p>`);
+  }
+
+  closeLists();
+  return output.join("");
+}
+
+function renderChatMessage(item) {
+  if (item.role === "user") {
+    return `<div class="chat-item user"><p class="md-p">${escapeHtml(item.content)}</p></div>`;
+  }
+
+  return `<div class="chat-item assistant">${markdownToSafeHtml(item.content)}</div>`;
+}
+
 async function renderAdvisor() {
   const content = document.getElementById("main-content");
   const historyResponse = await request("/advisor/history?limit=25");
@@ -1046,38 +1158,45 @@ async function renderAdvisor() {
 
   content.innerHTML = `
     <article class="card stack">
-      <h4>Consultor financeiro IA</h4>
-      <p class="meta">Use perguntas como: "como economizar R$ 800 por mes?" ou "quais riscos vejo hoje na minha carteira?"</p>
+      <h4>Agente financeiro ${APP_NAME}</h4>
+      <p class="meta">O agente responde em formato estruturado e tambem executa acoes de meta direto pelo chat.</p>
+
+      <div class="prompt-chips">
+        <button class="chip" data-prompt="Adicione 200 reais na meta Reserva de emergencia">+ R$ 200 na meta</button>
+        <button class="chip" data-prompt="Analise oportunidades de PETR4, VALE3 e ITUB4 com cautelas">Analisar oportunidades</button>
+        <button class="chip" data-prompt="Monte um plano de 30 dias para eu economizar 800 reais">Plano de 30 dias</button>
+      </div>
 
       <div id="chat-box" class="chat">
         ${
           history.length
-            ? history
-                .map(
-                  (item) => `
-                    <div class="chat-item ${item.role === "user" ? "user" : "assistant"}">
-                      ${escapeHtml(item.content)}
-                    </div>
-                  `
-                )
-                .join("")
+            ? history.map((item) => renderChatMessage(item)).join("")
             : '<p class="empty">Sem mensagens ainda. Inicie a conversa.</p>'
         }
       </div>
 
       <form id="advisor-form" class="stack">
-        <textarea name="message" placeholder="Ex.: Monte um plano de 30 dias para eu aumentar minha taxa de poupanca e melhorar minha carteira." required></textarea>
+        <textarea name="message" placeholder="Ex.: adicione 200 reais na minha meta Reserva de emergencia" required></textarea>
         <button class="btn" type="submit">Enviar para IA</button>
       </form>
 
-      <p class="meta">Aviso: conteudo educacional, sem promessa de retorno.</p>
+      <p class="meta">Aviso: conteudo educacional e sem promessa de retorno financeiro.</p>
     </article>
   `;
 
   const chatBox = document.getElementById("chat-box");
+  const form = document.getElementById("advisor-form");
+  const input = form.querySelector("textarea[name='message']");
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  document.getElementById("advisor-form").addEventListener("submit", async (event) => {
+  content.querySelectorAll("[data-prompt]").forEach((button) => {
+    button.addEventListener("click", () => {
+      input.value = button.dataset.prompt;
+      input.focus();
+    });
+  });
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const message = String(formData.get("message") || "").trim();
@@ -1088,12 +1207,12 @@ async function renderAdvisor() {
 
     const optimistic = document.createElement("div");
     optimistic.className = "chat-item user";
-    optimistic.textContent = message;
+    optimistic.innerHTML = `<p class="md-p">${escapeHtml(message)}</p>`;
     chatBox.appendChild(optimistic);
 
     const loading = document.createElement("div");
     loading.className = "chat-item assistant";
-    loading.textContent = "Analisando seus dados financeiros e de mercado...";
+    loading.innerHTML = `<p class="md-p">Analisando seu comando e seus dados financeiros...</p>`;
     chatBox.appendChild(loading);
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -1105,10 +1224,10 @@ async function renderAdvisor() {
         body: { message }
       });
 
-      loading.textContent = response.data.message;
+      loading.innerHTML = markdownToSafeHtml(response.data.message);
       chatBox.scrollTop = chatBox.scrollHeight;
     } catch (error) {
-      loading.textContent = error.message || "Falha ao conversar com IA.";
+      loading.innerHTML = `<p class="md-p">${escapeHtml(error.message || "Falha ao conversar com IA.")}</p>`;
     }
   });
 }

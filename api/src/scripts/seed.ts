@@ -6,7 +6,7 @@ import { createId } from "../utils/id";
 async function main(): Promise<void> {
   await runMigrations();
 
-  const email = "demo@moneycopilot.ai";
+  const email = "demo@econ-ai.app";
   const password = "Demo@1234";
 
   const existing = await pool.query<{ id: string }>("SELECT id FROM users WHERE email = $1", [email]);
