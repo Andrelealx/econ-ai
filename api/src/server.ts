@@ -13,6 +13,7 @@ import { dashboardRouter } from "./routes/dashboard";
 import { financeRouter } from "./routes/finance";
 import { healthRouter } from "./routes/health";
 import { investmentsRouter } from "./routes/investments";
+import { publicRouter } from "./routes/public";
 
 async function bootstrap(): Promise<void> {
   if (env.AUTO_MIGRATE) {
@@ -33,6 +34,7 @@ async function bootstrap(): Promise<void> {
   app.use(express.json({ limit: "2mb" }));
 
   app.use("/api", healthRouter);
+  app.use("/api", publicRouter);
   app.use("/api", authRouter);
 
   app.use("/api", requireAuth, financeRouter);

@@ -4,7 +4,6 @@ import { z } from "zod";
 import { pool } from "../db/pool";
 import { createId } from "../utils/id";
 import { requireAuth, signAuthToken } from "../middlewares/auth";
-import { createGuestSessionUser } from "../services/guestSession";
 
 const registerSchema = z.object({
   fullName: z.string().min(2).max(120),
@@ -122,19 +121,6 @@ authRouter.post("/auth/login", async (req, res) => {
         monthlyIncome: Number(user.monthly_income),
         riskProfile: user.risk_profile
       }
-    }
-  });
-});
-
-authRouter.post("/auth/guest-session", async (_req, res) => {
-  const user = await createGuestSessionUser();
-  const token = signAuthToken(user.id, user.email);
-
-  res.status(201).json({
-    data: {
-      token,
-      user,
-      isGuest: true
     }
   });
 });

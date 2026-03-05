@@ -26,6 +26,18 @@ Regras:
 - Use no maximo 6 bullets por secao.
 `.trim();
 
+const publicSystemPrompt = `
+Voce e o assistente financeiro publico do econ-ai.
+Voce conversa com visitantes que ainda nao fizeram login.
+
+Regras:
+- Entregue orientacoes educacionais de financas pessoais e investimentos.
+- Nao invente acesso a dados pessoais do usuario.
+- Se o usuario pedir acao de conta (ex.: "adicione 200 reais na minha meta"), explique que isso exige login.
+- Sempre responda em Markdown claro e objetivo.
+- Inclua aviso breve de risco quando falar de investimentos.
+`.trim();
+
 let client: OpenAI | null = null;
 
 function getOpenAIClient(): OpenAI | null {
@@ -79,6 +91,38 @@ function createFallbackAdvice(message: string, context: AdvisorContext): string 
   ].join("\n");
 }
 
+function createPublicFallbackAdvice(message: string): string {
+  const lower = message.toLowerCase();
+  const askedAction = /(adicion|acrescent|coloc|meta|lanc|transac|orcament|delet|remov)/.test(lower);
+
+  if (askedAction) {
+    return [
+      "## econ-ai | Chat publico",
+      "Para **executar acoes reais** (como atualizar meta, lancar transacao ou editar orcamento), voce precisa fazer login.",
+      "",
+      "### O que voce pode fazer agora",
+      "- Entrar ou criar conta para eu agir na sua base real.",
+      "- Continuar no chat publico para tirar duvidas e montar estrategias.",
+      "",
+      "### Exemplo de comando apos login",
+      "> Adicione 200 reais na meta Reserva de emergencia"
+    ].join("\n");
+  }
+
+  return [
+    "## econ-ai | Chat publico",
+    "Posso te ajudar com planejamento financeiro e ideias de investimento em modo educacional.",
+    "",
+    "### Sugestao de estrutura para comecar hoje",
+    "1. Defina uma meta de poupanca mensal (10% a 20% da renda).",
+    "2. Reduza 1 categoria de gasto para liberar caixa imediato.",
+    "3. Monte reserva de emergencia antes de elevar risco da carteira.",
+    "",
+    "### Aviso de risco",
+    "- Este chat e educacional e nao constitui recomendacao individual de investimento."
+  ].join("\n");
+}
+
 export async function generateAdvisorReply(message: string, context: AdvisorContext): Promise<string> {
   const openai = getOpenAIClient();
   if (!openai) {
@@ -108,4 +152,32 @@ Responda em portugues do Brasil, objetivo e pratico, com formato Markdown.
   }
 
   return createFallbackAdvice(message, context);
+}
+
+export async function generatePublicAdvisorReply(message: string): Promise<string> {
+  const openai = getOpenAIClient();
+  if (!openai) {
+    return createPublicFallbackAdvice(message);
+  }
+
+  const prompt = `
+Pergunta do visitante:
+${message}
+
+Responda em portugues do Brasil e em formato Markdown.
+`.trim();
+
+  const response = await openai.responses.create({
+    model: env.OPENAI_MODEL,
+    input: [
+      { role: "system", content: publicSystemPrompt },
+      { role: "user", content: prompt }
+    ]
+  });
+
+  if (response.output_text && response.output_text.trim().length > 0) {
+    return response.output_text.trim();
+  }
+
+  return createPublicFallbackAdvice(message);
 }

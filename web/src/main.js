@@ -12,7 +12,19 @@ const state = {
   user: null,
   monthRef: getMonthRef(),
   page: "dashboard",
-  authTab: "login"
+  authTab: "login",
+  authModalOpen: false,
+  publicMessages: (() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("econai_public_messages") || "[]");
+      if (!Array.isArray(raw)) {
+        return [];
+      }
+      return raw.filter((item) => item && typeof item.role === "string" && typeof item.content === "string").slice(-30);
+    } catch {
+      return [];
+    }
+  })()
 };
 
 const root = document.getElementById("app");
@@ -28,9 +40,14 @@ function saveSession() {
   localStorage.setItem("econai_token", state.token);
 }
 
+function savePublicMessages() {
+  localStorage.setItem("econai_public_messages", JSON.stringify(state.publicMessages.slice(-30)));
+}
+
 function clearSession() {
   state.token = "";
   state.user = null;
+  state.page = "dashboard";
   localStorage.removeItem("econai_token");
 }
 
@@ -73,7 +90,15 @@ async function request(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.error || `Erro ${response.status}`);
+    const errorMessage = payload.error || `Erro ${response.status}`;
+
+    if (response.status === 401 && state.token) {
+      clearSession();
+      state.authModalOpen = true;
+      renderPublicHome("Sua sessao expirou. Entre novamente para continuar.");
+    }
+
+    throw new Error(errorMessage);
   }
 
   return payload;
@@ -95,53 +120,150 @@ function showToast(message, kind = "info") {
   setTimeout(() => toast.remove(), 2400);
 }
 
-function renderAuth(errorMessage = "") {
+function renderPublicHome(errorMessage = "") {
   root.innerHTML = `
-    <div class="auth-wrap">
-      <div class="auth-card">
-        <aside class="auth-highlight">
+    <div class="public-shell">
+      <header class="public-header card">
+        <div class="public-brand">
+          <img src="/econ-ai-logo.svg" alt="Logo econ-ai" class="public-logo" />
           <div>
             <h1>${APP_NAME}</h1>
-            <p style="margin-top:8px; color: var(--muted);">
-              Seu sistema financeiro com IA para executar acoes reais, planejar metas e encontrar oportunidades de mercado.
-            </p>
-            <ul>
-              <li>Comando via chat: \"adicione R$ 200 na minha meta\"</li>
-              <li>Resumo automatico de renda, gastos e poupanca</li>
-              <li>Orcamentos por categoria com alertas</li>
-              <li>Radar de oportunidades de mercado com score</li>
-              <li>Chat de consultoria financeira com plano de acao</li>
-            </ul>
+            <p class="meta">Consultoria financeira com IA e execucao de acoes na conta.</p>
           </div>
-          <div class="stack">
-            <button id="guest-login-btn" class="btn ghost" type="button">Testar agora sem cadastro</button>
-            <p class="kbd">Modo experimental com dados simulados.</p>
-          </div>
-        </aside>
+        </div>
+        <div class="public-auth-actions">
+          <button id="open-login-btn" class="btn secondary" type="button">Entrar</button>
+          <button id="open-register-btn" class="btn" type="button">Criar conta</button>
+        </div>
+      </header>
 
-        <section class="stack">
-          <div class="tabs">
-            <button class="tab ${state.authTab === "login" ? "active" : ""}" data-tab="login">Entrar</button>
-            <button class="tab ${state.authTab === "register" ? "active" : ""}" data-tab="register">Criar conta</button>
-          </div>
-
-          ${state.authTab === "login" ? renderLoginForm() : renderRegisterForm()}
-          <p class="kbd">A conexao com API e automatica neste ambiente.</p>
-          ${errorMessage ? `<p style="color:#fecaca; font-size:13px;">${escapeHtml(errorMessage)}</p>` : ""}
+      <main class="public-main">
+        <section class="public-hero">
+          <h2>Como posso ajudar com seu dinheiro hoje?</h2>
+          <p class="meta">
+            No chat publico, voce recebe orientacoes e analises educacionais. Para executar acoes reais na conta, faca login.
+          </p>
         </section>
-      </div>
+
+        <section class="card stack">
+          <div id="public-chat-box" class="chat public-chat-box">
+            ${
+              state.publicMessages.length
+                ? state.publicMessages.map((item) => renderChatMessage(item)).join("")
+                : `
+                  <div class="chat-item assistant">
+                    <h3 class="md-h2">econ-ai | Chat publico</h3>
+                    <p class="md-p">Posso montar planos de economia, revisar sua estrategia e analisar oportunidades de mercado.</p>
+                    <p class="md-p" style="margin-top:6px;">Se quiser executar algo como atualizar metas e orcamentos, basta entrar na sua conta.</p>
+                  </div>
+                `
+            }
+          </div>
+
+          <form id="public-chat-form" class="stack">
+            <textarea
+              name="message"
+              placeholder="Pergunte sobre planejamento financeiro, economia mensal, renda extra, carteira e riscos..."
+              required
+            ></textarea>
+            <button class="btn" type="submit">Enviar</button>
+          </form>
+
+          <p class="kbd">Dica: para usar dashboard, transacoes, metas e investimentos, faca login.</p>
+        </section>
+      </main>
+
+      ${
+        state.authModalOpen
+          ? `
+            <div id="auth-modal-backdrop" class="auth-modal-backdrop">
+              <div class="auth-modal card">
+                <div class="auth-modal-top">
+                  <div class="tabs">
+                    <button class="tab ${state.authTab === "login" ? "active" : ""}" data-tab="login">Entrar</button>
+                    <button class="tab ${state.authTab === "register" ? "active" : ""}" data-tab="register">Criar conta</button>
+                  </div>
+                  <button id="close-auth-modal" class="btn secondary" type="button">Fechar</button>
+                </div>
+                ${state.authTab === "login" ? renderLoginForm() : renderRegisterForm()}
+                ${errorMessage ? `<p style="color:#fecaca; font-size:13px;">${escapeHtml(errorMessage)}</p>` : ""}
+              </div>
+            </div>
+          `
+          : ""
+      }
     </div>
   `;
+
+  document.getElementById("open-login-btn")?.addEventListener("click", () => {
+    state.authTab = "login";
+    state.authModalOpen = true;
+    renderPublicHome();
+  });
+
+  document.getElementById("open-register-btn")?.addEventListener("click", () => {
+    state.authTab = "register";
+    state.authModalOpen = true;
+    renderPublicHome();
+  });
+
+  document.getElementById("public-chat-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const message = String(formData.get("message") || "").trim();
+
+    if (!message) {
+      return;
+    }
+
+    const chatBox = document.getElementById("public-chat-box");
+    state.publicMessages.push({ role: "user", content: message });
+    savePublicMessages();
+    chatBox.innerHTML = state.publicMessages.map((item) => renderChatMessage(item)).join("");
+
+    const loading = document.createElement("div");
+    loading.className = "chat-item assistant";
+    loading.innerHTML = "<p class=\"md-p\">Analisando sua pergunta...</p>";
+    chatBox.appendChild(loading);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    event.currentTarget.reset();
+
+    try {
+      const response = await request("/public/chat", {
+        method: "POST",
+        body: { message }
+      });
+
+      state.publicMessages.push({ role: "assistant", content: response.data.message });
+      savePublicMessages();
+      chatBox.innerHTML = state.publicMessages.map((item) => renderChatMessage(item)).join("");
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+      loading.innerHTML = `<p class="md-p">${escapeHtml(error.message || "Falha ao conversar no chat publico.")}</p>`;
+    }
+  });
 
   root.querySelectorAll("[data-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       state.authTab = button.dataset.tab;
-      renderAuth();
+      state.authModalOpen = true;
+      renderPublicHome();
     });
   });
 
-  const guestLoginButton = document.getElementById("guest-login-btn");
-  guestLoginButton?.addEventListener("click", handleGuestSession);
+  document.getElementById("close-auth-modal")?.addEventListener("click", () => {
+    state.authModalOpen = false;
+    renderPublicHome();
+  });
+
+  document.getElementById("auth-modal-backdrop")?.addEventListener("click", (event) => {
+    if (event.target.id !== "auth-modal-backdrop") {
+      return;
+    }
+    state.authModalOpen = false;
+    renderPublicHome();
+  });
 
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
@@ -166,7 +288,7 @@ function renderLoginForm() {
         <input name="password" type="password" required />
       </label>
       <button class="btn" type="submit">Entrar</button>
-      <p class="kbd">Dica: se quiser apenas testar, use \"Testar agora sem cadastro\".</p>
+      <p class="kbd">Seu acesso libera dashboard, transacoes, metas, carteira e acoes automatizadas via IA.</p>
     </form>
   `;
 }
@@ -218,10 +340,12 @@ async function handleLogin(event) {
 
     state.token = response.data.token;
     state.user = response.data.user;
+    state.authModalOpen = false;
     saveSession();
     await bootstrapApp();
   } catch (error) {
-    renderAuth(error.message || "Falha no login");
+    state.authModalOpen = true;
+    renderPublicHome(error.message || "Falha no login");
   }
 }
 
@@ -243,25 +367,12 @@ async function handleRegister(event) {
 
     state.token = response.data.token;
     state.user = response.data.user;
+    state.authModalOpen = false;
     saveSession();
     await bootstrapApp();
   } catch (error) {
-    renderAuth(error.message || "Falha no cadastro");
-  }
-}
-
-async function handleGuestSession() {
-  try {
-    const response = await request("/auth/guest-session", {
-      method: "POST"
-    });
-
-    state.token = response.data.token;
-    state.user = response.data.user;
-    saveSession();
-    await bootstrapApp();
-  } catch (error) {
-    renderAuth(error.message || "Falha ao iniciar modo experimental");
+    state.authModalOpen = true;
+    renderPublicHome(error.message || "Falha no cadastro");
   }
 }
 
@@ -275,14 +386,12 @@ function renderShell() {
     <div class="shell">
       <aside class="sidebar">
         <div class="brand">
-          <h2>${APP_NAME}</h2>
+          <div class="brand-row">
+            <img src="/econ-ai-logo.svg" alt="Logo econ-ai" class="sidebar-logo" />
+            <h2>${APP_NAME}</h2>
+          </div>
           <p>${escapeHtml(state.user?.fullName || "Usuario")}</p>
           <p>${escapeHtml(state.user?.email || "")}</p>
-          ${
-            state.user?.email?.endsWith("@econ-ai.local")
-              ? '<span class="badge" style="margin-top:8px;">Modo experimental</span>'
-              : ""
-          }
         </div>
 
         <nav class="nav" id="nav">
@@ -334,7 +443,7 @@ function renderShell() {
 
   document.getElementById("logout-btn").addEventListener("click", () => {
     clearSession();
-    renderAuth();
+    renderPublicHome();
   });
 }
 
@@ -1161,12 +1270,6 @@ async function renderAdvisor() {
       <h4>Agente financeiro ${APP_NAME}</h4>
       <p class="meta">O agente responde em formato estruturado e tambem executa acoes de meta direto pelo chat.</p>
 
-      <div class="prompt-chips">
-        <button class="chip" data-prompt="Adicione 200 reais na meta Reserva de emergencia">+ R$ 200 na meta</button>
-        <button class="chip" data-prompt="Analise oportunidades de PETR4, VALE3 e ITUB4 com cautelas">Analisar oportunidades</button>
-        <button class="chip" data-prompt="Monte um plano de 30 dias para eu economizar 800 reais">Plano de 30 dias</button>
-      </div>
-
       <div id="chat-box" class="chat">
         ${
           history.length
@@ -1186,15 +1289,7 @@ async function renderAdvisor() {
 
   const chatBox = document.getElementById("chat-box");
   const form = document.getElementById("advisor-form");
-  const input = form.querySelector("textarea[name='message']");
   chatBox.scrollTop = chatBox.scrollHeight;
-
-  content.querySelectorAll("[data-prompt]").forEach((button) => {
-    button.addEventListener("click", () => {
-      input.value = button.dataset.prompt;
-      input.focus();
-    });
-  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1239,13 +1334,13 @@ async function bootstrapApp() {
     await renderPage();
   } catch {
     clearSession();
-    renderAuth("Sessao expirada. Faca login novamente.");
+    renderPublicHome("Sessao expirada. Faca login novamente.");
   }
 }
 
 async function init() {
   if (!state.token) {
-    renderAuth();
+    renderPublicHome();
     return;
   }
 

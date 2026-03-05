@@ -6,7 +6,7 @@ Plataforma SaaS para:
 - analisar oportunidades de acoes com score quantitativo;
 - conversar com um consultor financeiro por IA.
 - executar acoes financeiras via chat (ex.: adicionar valor em meta).
-- testar o produto sem cadastro (modo convidado).
+- oferecer chat publico para visitantes sem login.
 
 ## Stack
 
@@ -68,14 +68,15 @@ npm run dev:web
 - Web: `http://localhost:5173`
 - API: `http://localhost:4010/api/health`
 
-## Modo de teste sem cadastro
+## Chat publico sem login
 
-- No login, clique em `Testar agora sem cadastro`.
-- O sistema cria uma sessao experimental com dados simulados.
+- Visitantes sem login acessam apenas o chat publico (`/api/public/chat`).
+- Dashboard, transacoes, metas, investimentos e acoes em conta exigem autenticacao.
 
 ## Endpoints principais
 
-- Auth: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/guest-session`, `GET /api/auth/me`
+- Publico: `POST /api/public/chat`
+- Auth: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
 - Dashboard: `GET /api/dashboard/summary`
 - Financas: `/api/finance/*`
 - Investimentos: `/api/investments/*`
