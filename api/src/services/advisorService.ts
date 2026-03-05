@@ -20,7 +20,7 @@ Regras:
 - Nunca prometa retorno garantido.
 - Sempre inclua aviso breve de risco.
 - Prefira recomendacoes acionaveis em ate 30 dias.
-- Se falar de acoes, use linguagem educacional e de cenarios, nao recomendacao categórica.
+- Se falar de acoes, use linguagem educacional e de cenarios, nao como recomendacao categorica.
 - Considere perfil moderado por padrao se o usuario nao informar.
 - Responda sempre em Markdown limpo, com secoes curtas e objetivas.
 - Use no maximo 6 bullets por secao.
@@ -93,7 +93,7 @@ function createFallbackAdvice(message: string, context: AdvisorContext): string 
 
 function createPublicFallbackAdvice(message: string): string {
   const lower = message.toLowerCase();
-  const askedAction = /(adicion|acrescent|coloc|meta|lanc|transac|orcament|delet|remov)/.test(lower);
+  const askedAction = /(adicion|acrescent|coloc|meta|lanc|transac|orcament|delet|remov|salv|registr)/.test(lower);
 
   if (askedAction) {
     return [
@@ -104,8 +104,10 @@ function createPublicFallbackAdvice(message: string): string {
       "- Entrar ou criar conta para eu agir na sua base real.",
       "- Continuar no chat publico para tirar duvidas e montar estrategias.",
       "",
-      "### Exemplo de comando apos login",
-      "> Adicione 200 reais na meta Reserva de emergencia"
+      "### Exemplos de comando apos login",
+      "- Adicione 200 reais na meta Reserva de emergencia",
+      "- Defina o orcamento de alimentacao para 1200",
+      "- Lance uma despesa de 59,90 em transporte"
     ].join("\n");
   }
 

@@ -1158,7 +1158,7 @@ function InvestmentsPage({
               <span className="badge">{item.signal} | risco {item.risk}</span>
             </div>
             <p className="meta">Preco: {formatCurrency(item.metrics.price, item.quote.currency)} | Momentum 30d: {formatPercent(item.metrics.momentum30d)} | Volatilidade: {formatPercent(item.metrics.volatilityAnnualized)}</p>
-            <div className="meta" dangerouslySetInnerHTML={{ __html: item.reasons.map((reason) => `• ${escapeHtml(reason)}`).join("<br />") }} />
+            <div className="meta" dangerouslySetInnerHTML={{ __html: item.reasons.map((reason) => `- ${escapeHtml(reason)}`).join("<br />") }} />
           </article>
         )) : <p className="empty">Sem analise carregada. Clique em "Analisar".</p>}
 
@@ -1169,9 +1169,13 @@ function InvestmentsPage({
 }
 
 function AdvisorPage({
-  request
+  request,
+  onActionApplied,
+  onToast
 }: {
   request: <T>(path: string, options?: RequestOptions) => Promise<T>;
+  onActionApplied: () => void;
+  onToast: (message: string, kind?: "success" | "error") => void;
 }) {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
@@ -1217,7 +1221,7 @@ function AdvisorPage({
     setSending(true);
 
     try {
-      const data = await request<{ message: string }>("/advisor/chat", {
+      const data = await request<{ message: string; action?: { type?: string } | null }>("/advisor/chat", {
         method: "POST",
         body: { message: text }
       });
@@ -1227,6 +1231,18 @@ function AdvisorPage({
         next[next.length - 1] = { role: "assistant", content: data.message };
         return next;
       });
+
+      if (data.action?.type) {
+        const actionLabels: Record<string, string> = {
+          goal_contribution: "Meta atualizada pela IA",
+          goal_saved: "Meta criada/atualizada pela IA",
+          budget_upsert: "Orcamento salvo pela IA",
+          transaction_created: "Transacao registrada pela IA"
+        };
+
+        onActionApplied();
+        onToast(actionLabels[data.action.type] || "Acao executada pela IA", "success");
+      }
     } catch (error) {
       setHistory((prev) => {
         const next = [...prev];
@@ -1244,7 +1260,7 @@ function AdvisorPage({
   return (
     <article className="card stack">
       <h4>Agente financeiro {APP_NAME}</h4>
-      <p className="meta">Comandos de acao funcionam aqui: "adicione 200 reais na minha meta ..."</p>
+      <p className="meta">Use comandos em linguagem natural para criar metas, salvar orcamentos e registrar transacoes.</p>
 
       <div className="chat" ref={chatRef}>
         {loading ? <p className="empty">Carregando historico...</p> : history.length ? (
@@ -1256,7 +1272,7 @@ function AdvisorPage({
         <textarea
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Ex.: adicione 200 reais na minha meta Reserva de emergencia"
+          placeholder="Ex.: Crie meta Viagem com alvo de 8000 | Defina orcamento de alimentacao para 1200 | Lance despesa de 59,90 em transporte"
           required
         />
         <button className="btn" type="submit" disabled={sending}>
@@ -1264,7 +1280,7 @@ function AdvisorPage({
         </button>
       </form>
 
-      <p className="meta">Aviso: conteudo educacional e sem promessa de retorno.</p>
+      <p className="meta">Aviso: conteudo educacional, sem promessa de retorno.</p>
     </article>
   );
 }
@@ -1593,7 +1609,13 @@ export function App() {
             {page === "investments" ? (
               <InvestmentsPage request={request} onToast={showToast} />
             ) : null}
-            {page === "advisor" ? <AdvisorPage request={request} /> : null}
+            {page === "advisor" ? (
+              <AdvisorPage
+                request={request}
+                onActionApplied={() => setRefreshTick((value) => value + 1)}
+                onToast={showToast}
+              />
+            ) : null}
           </section>
         </main>
       </div>

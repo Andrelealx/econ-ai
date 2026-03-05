@@ -5,7 +5,24 @@ import { getMonthRef, monthRange } from "../utils/date";
 import { createId } from "../utils/id";
 import { buildOpportunities } from "../services/opportunityEngine";
 import { generateAdvisorReply } from "../services/advisorService";
-import { tryExecuteGoalAction } from "../services/advisorActions";
+import { AccountSnapshot, GoalSnapshot, tryExecuteAdvisorAction } from "../services/advisorActions";
+
+type AdvisorContext = {
+  monthRef: string;
+  income: number;
+  expenses: number;
+  savingsRate: number;
+  topExpenseCategories: Array<{ category: string; total: number }>;
+  budgetsOverLimit: Array<{ category: string; spent: number; limit: number }>;
+  goals: Array<{ name: string; targetAmount: number; currentAmount: number; status: string }>;
+  opportunities: Array<{ symbol: string; score: number; signal: string; risk: string }>;
+};
+
+type AdvisorSnapshot = {
+  context: AdvisorContext;
+  goals: GoalSnapshot[];
+  accounts: AccountSnapshot[];
+};
 
 const messageSchema = z.object({
   message: z.string().min(4).max(2000)
@@ -13,19 +30,10 @@ const messageSchema = z.object({
 
 export const advisorRouter = Router();
 
-advisorRouter.post("/advisor/chat", async (req, res) => {
-  const userId = req.userId as string;
-  const parsed = messageSchema.safeParse(req.body);
-
-  if (!parsed.success) {
-    res.status(400).json({ error: "Mensagem invalida", details: parsed.error.flatten() });
-    return;
-  }
-
-  const monthRef = getMonthRef();
+async function loadAdvisorSnapshot(userId: string, monthRef: string): Promise<AdvisorSnapshot> {
   const { start, end } = monthRange(monthRef);
 
-  const [totalsResult, categoriesResult, budgetResult, goalsResult, watchlistResult] = await Promise.all([
+  const [totalsResult, categoriesResult, budgetResult, goalsResult, watchlistResult, accountsResult] = await Promise.all([
     pool.query<{ income: string; expense: string }>(
       `SELECT
           COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
@@ -67,12 +75,18 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
       `SELECT id, name, target_amount, current_amount, status
        FROM goals
        WHERE user_id = $1
-       ORDER BY created_at DESC
-       LIMIT 5`,
+       ORDER BY created_at DESC`,
       [userId]
     ),
     pool.query<{ symbol: string }>(
       `SELECT symbol FROM watchlist WHERE user_id = $1 ORDER BY created_at DESC LIMIT 6`,
+      [userId]
+    ),
+    pool.query<{ id: string; name: string; type: string; currency: string }>(
+      `SELECT id, name, type, currency
+       FROM accounts
+       WHERE user_id = $1
+       ORDER BY created_at ASC`,
       [userId]
     )
   ]);
@@ -90,39 +104,25 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
     .filter((row) => row.spent > row.limit)
     .sort((a, b) => b.spent - b.limit - (a.spent - a.limit));
 
-  const symbols = watchlistResult.rows.map((row) => row.symbol);
-  const opportunities = symbols.length ? await buildOpportunities(symbols) : [];
-  const userMessage = parsed.data.message.trim();
-
-  const goalsSnapshot = goalsResult.rows.map((row) => ({
+  const goals: GoalSnapshot[] = goalsResult.rows.map((row) => ({
     id: row.id,
     name: row.name,
     targetAmount: Number(row.target_amount),
     currentAmount: Number(row.current_amount),
-    status: row.status
+    status: row.status as GoalSnapshot["status"]
   }));
 
-  const actionResolution = await tryExecuteGoalAction({
-    userId,
-    message: userMessage,
-    goals: goalsSnapshot
-  });
+  const accounts: AccountSnapshot[] = accountsResult.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    type: row.type as AccountSnapshot["type"],
+    currency: row.currency
+  }));
 
-  const performedAction = actionResolution.action;
+  const symbols = watchlistResult.rows.map((row) => row.symbol);
+  const opportunities = symbols.length ? await buildOpportunities(symbols) : [];
 
-  const resolvedGoals = performedAction
-    ? goalsSnapshot.map((goal) =>
-        goal.id === performedAction.goalId
-          ? {
-              ...goal,
-              currentAmount: performedAction.updatedAmount,
-              status: performedAction.updatedAmount >= goal.targetAmount ? "completed" : goal.status
-            }
-          : goal
-      )
-    : goalsSnapshot;
-
-  const context = {
+  const context: AdvisorContext = {
     monthRef,
     income,
     expenses,
@@ -132,11 +132,11 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
       total: Number(row.total)
     })),
     budgetsOverLimit,
-    goals: resolvedGoals.map((row) => ({
-      name: row.name,
-      targetAmount: row.targetAmount,
-      currentAmount: row.currentAmount,
-      status: row.status
+    goals: goals.slice(0, 5).map((goal) => ({
+      name: goal.name,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      status: goal.status
     })),
     opportunities: opportunities.slice(0, 5).map((row) => ({
       symbol: row.symbol,
@@ -146,9 +146,39 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
     }))
   };
 
+  return { context, goals, accounts };
+}
+
+advisorRouter.post("/advisor/chat", async (req, res) => {
+  const userId = req.userId as string;
+  const parsed = messageSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Mensagem invalida", details: parsed.error.flatten() });
+    return;
+  }
+
+  const monthRef = getMonthRef();
+  const userMessage = parsed.data.message.trim();
+
+  let snapshot = await loadAdvisorSnapshot(userId, monthRef);
+
+  const actionResolution = await tryExecuteAdvisorAction({
+    userId,
+    message: userMessage,
+    goals: snapshot.goals,
+    accounts: snapshot.accounts,
+    monthRef
+  });
+
+  if (actionResolution.action) {
+    snapshot = await loadAdvisorSnapshot(userId, monthRef);
+  }
+
+  const context = snapshot.context;
+
   const reply = actionResolution.handled
-    ? actionResolution.message ??
-      "## Acao processada\nRecebi seu comando e finalizei a solicitacao com sucesso."
+    ? actionResolution.message ?? "## Acao processada\nRecebi seu comando e finalizei a solicitacao com sucesso."
     : await generateAdvisorReply(userMessage, context);
 
   await pool.query(
@@ -162,7 +192,7 @@ advisorRouter.post("/advisor/chat", async (req, res) => {
     data: {
       message: reply,
       context,
-      action: performedAction ?? null
+      action: actionResolution.action ?? null
     }
   });
 });
@@ -191,3 +221,4 @@ advisorRouter.get("/advisor/history", async (req, res) => {
       .map((row) => ({ id: row.id, role: row.role, content: row.content, createdAt: row.created_at }))
   });
 });
+
