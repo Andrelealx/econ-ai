@@ -155,6 +155,25 @@ function formatPercent(value: number): string {
   return `${Number(value || 0).toFixed(1)}%`;
 }
 
+function csvCell(value: unknown): string {
+  const text = String(value ?? "");
+  if (/[",\n;]/.test(text)) {
+    return `"${text.replace(/"/g, "\"\"")}"`;
+  }
+  return text;
+}
+
+function downloadCsvFile(filename: string, rows: string[][]): void {
+  const content = rows.map((row) => row.map((cell) => csvCell(cell)).join(";")).join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function escapeHtml(value: string): string {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -404,6 +423,7 @@ function PublicHome({
 }) {
   const [message, setMessage] = useState("");
   const chatRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!chatRef.current) {
@@ -429,7 +449,7 @@ function PublicHome({
 
   return (
     <div className="shell public-app">
-      <aside className="sidebar sidebar-public">
+      <aside className={`sidebar sidebar-public ${menuOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-row">
             <img src="/econ-ai-logo.svg" alt="Logo econ-ai" className="sidebar-logo" />
@@ -445,13 +465,27 @@ function PublicHome({
 
         <div className="sidebar-public-cta">
           <p className="meta">Crie conta para liberar dashboard, metas, investimentos e acoes executaveis.</p>
-          <button type="button" className="btn secondary" onClick={onOpenLogin}>Entrar</button>
-          <button type="button" className="btn" onClick={onOpenRegister}>Criar conta</button>
+          <button type="button" className="btn secondary" onClick={() => { setMenuOpen(false); onOpenLogin(); }}>Entrar</button>
+          <button type="button" className="btn" onClick={() => { setMenuOpen(false); onOpenRegister(); }}>Criar conta</button>
         </div>
       </aside>
+      <button
+        type="button"
+        className={`sidebar-backdrop ${menuOpen ? "open" : ""}`}
+        onClick={() => setMenuOpen(false)}
+        aria-label="Fechar menu"
+      />
 
       <main className="main main-public">
         <header className="topbar card">
+          <button
+            type="button"
+            className="menu-toggle"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-label="Abrir menu"
+          >
+            Menu
+          </button>
           <div>
             <h3>Chat publico econ-ai</h3>
             <p className="meta">Converse com o consultor virtual e receba analises educacionais.</p>
@@ -531,6 +565,11 @@ function DashboardPage({
     return <div className="card"><p className="empty">Nao foi possivel carregar o dashboard.</p></div>;
   }
 
+  const topCategory = summary.categories[0];
+  const overBudgetCount = summary.budgets.filter((item) => item.isOverLimit).length;
+  const completedGoals = summary.goals.filter((goal) => goal.status === "completed").length;
+  const activeGoals = summary.goals.filter((goal) => goal.status === "active").length;
+
   return (
     <>
       <div className="grid-4">
@@ -538,6 +577,24 @@ function DashboardPage({
         <article className="card"><p className="meta">Gastos do mes</p><p className="metric">{formatCurrency(summary.totals.expense)}</p></article>
         <article className="card"><p className="meta">Poupanca estimada</p><p className="metric">{formatCurrency(summary.totals.savings)}</p><span className="badge">Taxa: {formatPercent(summary.totals.savingsRate)}</span></article>
         <article className="card"><p className="meta">Patrimonio estimado</p><p className="metric">{formatCurrency(summary.patrimony.estimatedNetWorth)}</p><span className="badge">Caixa + carteira</span></article>
+      </div>
+
+      <div className="grid-3">
+        <article className="card insight-card">
+          <p className="meta">Maior categoria de gasto</p>
+          <strong>{topCategory ? topCategory.category : "Sem dados"}</strong>
+          <p className="meta">{topCategory ? formatCurrency(topCategory.total) : "Adicione transacoes para gerar insights"}</p>
+        </article>
+        <article className="card insight-card">
+          <p className="meta">Orcamentos acima do limite</p>
+          <strong>{overBudgetCount}</strong>
+          <p className="meta">{summary.budgets.length ? `de ${summary.budgets.length} categorias monitoradas` : "Sem orcamentos cadastrados"}</p>
+        </article>
+        <article className="card insight-card">
+          <p className="meta">Metas concluidas</p>
+          <strong>{completedGoals}</strong>
+          <p className="meta">{activeGoals ? `${activeGoals} metas ativas em andamento` : "Crie metas para acompanhar aportes"}</p>
+        </article>
       </div>
 
       <div className="grid-2">
@@ -557,6 +614,9 @@ function DashboardPage({
               <div key={item.category}>
                 <div className="row-split"><span>{item.category}</span><strong>{formatCurrency(item.spent)} / {formatCurrency(item.monthlyLimit)}</strong></div>
                 <p className="meta">{formatPercent(item.percentUsed)} {item.isOverLimit ? "(acima do limite)" : ""}</p>
+                <div className={`progress-line ${item.isOverLimit ? "over" : ""}`}>
+                  <span style={{ width: `${Math.min(item.percentUsed, 100)}%` }} />
+                </div>
               </div>
             ))
           ) : <p className="empty">Nenhum orcamento cadastrado.</p>}
@@ -571,6 +631,9 @@ function DashboardPage({
               <div>
                 <strong>{goal.name}</strong>
                 <p className="meta">{formatCurrency(goal.currentAmount)} de {formatCurrency(goal.targetAmount)} ({formatPercent(goal.progressPercent)})</p>
+                <div className="progress-line">
+                  <span style={{ width: `${Math.min(goal.progressPercent, 100)}%` }} />
+                </div>
               </div>
               <span className="badge">{goal.status}</span>
             </div>
@@ -593,6 +656,8 @@ function TransactionsPage({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | TransactionItem["type"]>("all");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -611,6 +676,27 @@ function TransactionsPage({
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const filteredTransactions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return transactions.filter((item) => {
+      const typeMatch = typeFilter === "all" || item.type === typeFilter;
+      if (!typeMatch) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [
+        item.description,
+        item.category,
+        item.accountName || "",
+        item.occurredOn
+      ].join(" ").toLowerCase().includes(query);
+    });
+  }, [search, transactions, typeFilter]);
 
   const submitTransaction = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -651,6 +737,26 @@ function TransactionsPage({
     } catch (error) {
       onToast(error instanceof Error ? error.message : "Falha ao importar", "error");
     }
+  };
+
+  const exportFilteredCsv = () => {
+    if (!filteredTransactions.length) {
+      onToast("Nenhuma transacao para exportar", "error");
+      return;
+    }
+
+    downloadCsvFile(`econ-ai-transacoes-${monthRef}.csv`, [
+      ["data", "descricao", "categoria", "conta", "tipo", "valor"],
+      ...filteredTransactions.map((item) => [
+        item.occurredOn,
+        item.description,
+        item.category,
+        item.accountName || "",
+        item.type,
+        item.amount.toFixed(2)
+      ])
+    ]);
+    onToast("CSV exportado", "success");
   };
 
   return (
@@ -712,8 +818,25 @@ function TransactionsPage({
       </div>
 
       <article className="card stack">
-        <h4>Transacoes do mes</h4>
-        {loading ? <p className="empty">Carregando...</p> : transactions.length ? (
+        <div className="row-split">
+          <h4>Transacoes do mes</h4>
+          <div className="inline-actions wrap">
+            <input
+              placeholder="Filtrar por descricao, categoria..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as "all" | TransactionItem["type"])}>
+              <option value="all">Todos os tipos</option>
+              <option value="income">Receita</option>
+              <option value="expense">Despesa</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+            <button type="button" className="btn secondary" onClick={exportFilteredCsv}>Exportar CSV</button>
+          </div>
+        </div>
+
+        {loading ? <p className="empty">Carregando...</p> : filteredTransactions.length ? (
           <div className="table-wrap">
             <table className="table">
               <thead>
@@ -722,7 +845,7 @@ function TransactionsPage({
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((item) => (
+                {filteredTransactions.map((item) => (
                   <tr key={item.id}>
                     <td>{item.occurredOn}</td>
                     <td>{item.description}</td>
@@ -735,7 +858,7 @@ function TransactionsPage({
               </tbody>
             </table>
           </div>
-        ) : <p className="empty">Sem lancamentos neste mes.</p>}
+        ) : <p className="empty">Nenhuma transacao encontrada com esse filtro.</p>}
       </article>
     </>
   );
@@ -912,6 +1035,18 @@ function GoalRow({
 }) {
   const [currentAmount, setCurrentAmount] = useState(goal.currentAmount);
   const [status, setStatus] = useState<Goal["status"]>(goal.status);
+  const [contribution, setContribution] = useState(0);
+
+  const applyContribution = () => {
+    if (contribution <= 0) {
+      return;
+    }
+
+    const nextAmount = Number((currentAmount + contribution).toFixed(2));
+    setCurrentAmount(nextAmount);
+    setContribution(0);
+    void onUpdate(goal.id, nextAmount, status);
+  };
 
   return (
     <form
@@ -943,6 +1078,19 @@ function GoalRow({
           <option value="paused">Pausada</option>
           <option value="completed">Concluida</option>
         </select>
+      </label>
+      <label>
+        Aporte rapido (R$)
+        <div className="inline-actions">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={contribution}
+            onChange={(event) => setContribution(Number(event.target.value || 0))}
+          />
+          <button type="button" className="btn secondary" onClick={applyContribution}>Somar</button>
+        </div>
       </label>
       <div className="actions-end"><button className="btn secondary" type="submit">Atualizar</button></div>
     </form>
@@ -980,6 +1128,18 @@ function InvestmentsPage({
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const portfolioSummary = useMemo(() => {
+    return positions.reduce(
+      (acc, item) => {
+        acc.costBasis += Number(item.costBasis || 0);
+        acc.marketValue += Number(item.marketValue || 0);
+        acc.unrealizedPnl += Number(item.unrealizedPnl || 0);
+        return acc;
+      },
+      { costBasis: 0, marketValue: 0, unrealizedPnl: 0 }
+    );
+  }, [positions]);
 
   const savePosition = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1051,6 +1211,23 @@ function InvestmentsPage({
 
   return (
     <>
+      <div className="grid-3">
+        <article className="card insight-card">
+          <p className="meta">Custo total investido</p>
+          <strong>{formatCurrency(portfolioSummary.costBasis)}</strong>
+        </article>
+        <article className="card insight-card">
+          <p className="meta">Valor de mercado</p>
+          <strong>{formatCurrency(portfolioSummary.marketValue)}</strong>
+        </article>
+        <article className="card insight-card">
+          <p className="meta">P/L nao realizado</p>
+          <strong className={portfolioSummary.unrealizedPnl >= 0 ? "success-text" : "error-text"}>
+            {formatCurrency(portfolioSummary.unrealizedPnl)}
+          </strong>
+        </article>
+      </div>
+
       <div className="grid-2">
         <article className="card stack">
           <h4>Adicionar posicao</h4>
@@ -1298,6 +1475,7 @@ export function App() {
   const [publicMessages, setPublicMessages] = useState<ChatMessage[]>(readPublicMessages);
   const [publicSending, setPublicSending] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; kind: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -1565,7 +1743,7 @@ export function App() {
   return (
     <>
       <div className="shell">
-        <aside className="sidebar">
+        <aside className={`sidebar ${mobileMenuOpen ? "open" : ""}`}>
           <div className="brand">
             <div className="brand-row">
               <img src="/econ-ai-logo.svg" alt="Logo econ-ai" className="sidebar-logo" />
@@ -1576,18 +1754,32 @@ export function App() {
           </div>
 
           <nav className="nav">
-            <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
-            <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => setPage("transactions")}>Transacoes</button>
-            <button type="button" className={page === "planning" ? "active" : ""} onClick={() => setPage("planning")}>Orcamentos e Metas</button>
-            <button type="button" className={page === "investments" ? "active" : ""} onClick={() => setPage("investments")}>Investimentos</button>
-            <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => setPage("advisor")}>Agente IA</button>
+            <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => { setPage("dashboard"); setMobileMenuOpen(false); }}>Dashboard</button>
+            <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => { setPage("transactions"); setMobileMenuOpen(false); }}>Transacoes</button>
+            <button type="button" className={page === "planning" ? "active" : ""} onClick={() => { setPage("planning"); setMobileMenuOpen(false); }}>Orcamentos e Metas</button>
+            <button type="button" className={page === "investments" ? "active" : ""} onClick={() => { setPage("investments"); setMobileMenuOpen(false); }}>Investimentos</button>
+            <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => { setPage("advisor"); setMobileMenuOpen(false); }}>Agente IA</button>
           </nav>
 
-          <button type="button" className="btn secondary sidebar-logout" onClick={logout}>Sair</button>
+          <button type="button" className="btn secondary sidebar-logout" onClick={() => { setMobileMenuOpen(false); logout(); }}>Sair</button>
         </aside>
+        <button
+          type="button"
+          className={`sidebar-backdrop ${mobileMenuOpen ? "open" : ""}`}
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Fechar menu"
+        />
 
         <main className="main">
           <header className="topbar">
+            <button
+              type="button"
+              className="menu-toggle"
+              onClick={() => setMobileMenuOpen((value) => !value)}
+              aria-label="Abrir menu"
+            >
+              Menu
+            </button>
             <div>
               <h3>{pageTitle}</h3>
               <p className="meta">Mes de referencia</p>
@@ -1618,6 +1810,14 @@ export function App() {
             ) : null}
           </section>
         </main>
+
+        <nav className="mobile-tabbar">
+          <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
+          <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => setPage("transactions")}>Transacoes</button>
+          <button type="button" className={page === "planning" ? "active" : ""} onClick={() => setPage("planning")}>Metas</button>
+          <button type="button" className={page === "investments" ? "active" : ""} onClick={() => setPage("investments")}>Investir</button>
+          <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => setPage("advisor")}>IA</button>
+        </nav>
       </div>
 
       {toast ? <div className={`toast ${toast.kind}`}>{toast.message}</div> : null}
