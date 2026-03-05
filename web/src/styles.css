@@ -81,8 +81,7 @@ button {
 
 .public-shell {
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 14px;
+  place-items: center;
   position: relative;
 }
 
@@ -96,38 +95,6 @@ button {
   opacity: 0.18;
   mask-image: radial-gradient(circle at center, #000 40%, transparent 100%);
   z-index: -1;
-}
-
-.public-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 14px 16px;
-}
-
-.public-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.public-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
-}
-
-.public-brand h1 {
-  font-size: 25px;
-  letter-spacing: 0.35px;
-}
-
-.public-auth-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .public-main {
@@ -189,13 +156,32 @@ button {
 .sidebar {
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
-  background: var(--glass);
+  background: rgba(6, 11, 23, 0.82);
   backdrop-filter: blur(18px);
   box-shadow: var(--shadow);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: sticky;
+  top: 16px;
+  height: calc(100vh - 32px);
+}
+
+.sidebar-public {
+  background: rgba(4, 9, 18, 0.9);
+}
+
+.sidebar-public-cta {
+  margin-top: auto;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-logout {
+  margin-top: auto;
 }
 
 .brand-row {
@@ -243,10 +229,19 @@ button {
   border-color: var(--line);
 }
 
+.nav button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .main {
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 12px;
+}
+
+.main-public .topbar {
+  justify-content: flex-start;
 }
 
 .topbar {
@@ -608,21 +603,13 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
   .public-highlights {
     grid-template-columns: 1fr;
-  }
-
-  .public-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .public-auth-actions {
-    width: 100%;
-  }
-
-  .public-auth-actions .btn {
-    flex: 1;
   }
 
   .form-grid,

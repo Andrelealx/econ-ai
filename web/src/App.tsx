@@ -428,72 +428,88 @@ function PublicHome({
   };
 
   return (
-    <div className="public-shell">
-      <header className="public-header card">
-        <div className="public-brand">
-          <img src="/econ-ai-logo.svg" alt="Logo econ-ai" className="public-logo" />
-          <div>
-            <h1>{APP_NAME}</h1>
-            <p className="meta">Assistente financeiro com IA para pessoas e investidores.</p>
+    <div className="shell public-app">
+      <aside className="sidebar sidebar-public">
+        <div className="brand">
+          <div className="brand-row">
+            <img src="/econ-ai-logo.svg" alt="Logo econ-ai" className="sidebar-logo" />
+            <h2>{APP_NAME}</h2>
           </div>
+          <p>Modo visitante</p>
+          <p>Chat livre com orientacoes financeiras por IA.</p>
         </div>
-        <div className="public-auth-actions">
+
+        <nav className="nav">
+          <button type="button" className="active" disabled>Chat Publico</button>
+        </nav>
+
+        <div className="sidebar-public-cta">
+          <p className="meta">Crie conta para liberar dashboard, metas, investimentos e acoes executaveis.</p>
           <button type="button" className="btn secondary" onClick={onOpenLogin}>Entrar</button>
           <button type="button" className="btn" onClick={onOpenRegister}>Criar conta</button>
         </div>
-      </header>
+      </aside>
 
-      <main className="public-main">
-        <section className="public-hero">
-          <h2>Converse com o econ-ai</h2>
-          <p className="meta">
-            O chat publico entrega orientacoes e analises educacionais. Para editar metas, transacoes e carteira, faca login.
-          </p>
-        </section>
-
-        <section className="public-highlights">
-          <article className="card highlight">
-            <p className="highlight-kicker">Planejamento</p>
-            <h3>Diagnostico financeiro claro</h3>
-            <p className="meta">Entenda para onde seu dinheiro vai e monte metas com previsibilidade.</p>
-          </article>
-          <article className="card highlight">
-            <p className="highlight-kicker">Mercado</p>
-            <h3>Radar quantitativo de ativos</h3>
-            <p className="meta">Analise sinais, risco e momentum para encontrar oportunidades com mais contexto.</p>
-          </article>
-          <article className="card highlight">
-            <p className="highlight-kicker">Execucao</p>
-            <h3>Acoes por linguagem natural</h3>
-            <p className="meta">No modo logado, a IA executa comandos como atualizar metas e organizar lancamentos.</p>
-          </article>
-        </section>
-
-        <section className="card stack">
-          <div className="chat public-chat-box" ref={chatRef}>
-            {messages.length ? (
-              messages.map((item, index) => <MessageBubble item={item} key={`${item.role}-${index}`} />)
-            ) : (
-              <div className="chat-item assistant">
-                <h3 className="md-h2">Bem-vindo ao econ-ai</h3>
-                <p className="md-p">Posso te ajudar com planejamento financeiro, cortes de gasto, estrategia de metas e mercado.</p>
-              </div>
-            )}
+      <main className="main main-public">
+        <header className="topbar card">
+          <div>
+            <h3>Chat publico econ-ai</h3>
+            <p className="meta">Converse com o consultor virtual e receba analises educacionais.</p>
           </div>
+        </header>
 
-          <form className="stack" onSubmit={handleSubmit}>
-            <textarea
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Pergunte sobre orçamento, investimentos, reserva de emergência, risco e oportunidades..."
-              required
-            />
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? "Analisando..." : "Enviar"}
-            </button>
-          </form>
+        <section className="main-content public-main">
+          <section className="public-hero">
+            <h2>Converse com o econ-ai</h2>
+            <p className="meta">
+              O chat publico entrega orientacoes e analises educacionais. Para editar metas, transacoes e carteira, faca login.
+            </p>
+          </section>
 
-          <p className="kbd">Dica: funcionalidades de gestão e execução exigem conta autenticada.</p>
+          <section className="public-highlights">
+            <article className="card highlight">
+              <p className="highlight-kicker">Planejamento</p>
+              <h3>Diagnostico financeiro claro</h3>
+              <p className="meta">Entenda para onde seu dinheiro vai e monte metas com previsibilidade.</p>
+            </article>
+            <article className="card highlight">
+              <p className="highlight-kicker">Mercado</p>
+              <h3>Radar quantitativo de ativos</h3>
+              <p className="meta">Analise sinais, risco e momentum para encontrar oportunidades com mais contexto.</p>
+            </article>
+            <article className="card highlight">
+              <p className="highlight-kicker">Execucao</p>
+              <h3>Acoes por linguagem natural</h3>
+              <p className="meta">No modo logado, a IA executa comandos como atualizar metas e organizar lancamentos.</p>
+            </article>
+          </section>
+
+          <section className="card stack">
+            <div className="chat public-chat-box" ref={chatRef}>
+              {messages.length ? (
+                messages.map((item, index) => <MessageBubble item={item} key={`${item.role}-${index}`} />)
+              ) : (
+                <div className="chat-item assistant">
+                  <h3 className="md-h2">Bem-vindo ao econ-ai</h3>
+                  <p className="md-p">Posso te ajudar com planejamento financeiro, cortes de gasto, estrategia de metas e mercado.</p>
+                </div>
+              )}
+            </div>
+
+            <form className="stack" onSubmit={handleSubmit}>
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Pergunte sobre orçamento, investimentos, reserva de emergência, risco e oportunidades..."
+                required
+              />
+              <button className="btn" type="submit" disabled={loading}>
+                {loading ? "Analisando..." : "Enviar"}
+              </button>
+            </form>
+
+            <p className="kbd">Dica: funcionalidades de gestão e execução exigem conta autenticada.</p>
+          </section>
         </section>
       </main>
     </div>
@@ -1551,7 +1567,7 @@ export function App() {
             <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => setPage("advisor")}>Agente IA</button>
           </nav>
 
-          <button type="button" className="btn secondary" onClick={logout}>Sair</button>
+          <button type="button" className="btn secondary sidebar-logout" onClick={logout}>Sair</button>
         </aside>
 
         <main className="main">
