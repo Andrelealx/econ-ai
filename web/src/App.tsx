@@ -468,6 +468,8 @@ function PublicHome({
           <button type="button" className="btn secondary" onClick={() => { setMenuOpen(false); onOpenLogin(); }}>Entrar</button>
           <button type="button" className="btn" onClick={() => { setMenuOpen(false); onOpenRegister(); }}>Criar conta</button>
         </div>
+
+        <p className="leal-credit">Desenvolvido por <a href="https://lealsystems.com.br" target="_blank" rel="noopener noreferrer"><span>Leal Systems</span></a></p>
       </aside>
       <button
         type="button"
@@ -494,27 +496,27 @@ function PublicHome({
 
         <section className="main-content public-main">
           <section className="public-hero">
-            <h2>Converse com o econ-ai</h2>
+            <h2>Inteligência que transforma suas finanças</h2>
             <p className="meta">
-              O chat publico entrega orientacoes e analises educacionais. Para editar metas, transacoes e carteira, faca login.
+              Converse com o consultor de IA mais avançado para planejamento financeiro pessoal. Analise gastos, defina metas e descubra oportunidades de mercado em linguagem natural.
             </p>
           </section>
 
           <section className="public-highlights">
             <article className="card highlight">
               <p className="highlight-kicker">Planejamento</p>
-              <h3>Diagnostico financeiro claro</h3>
-              <p className="meta">Entenda para onde seu dinheiro vai e monte metas com previsibilidade.</p>
+              <h3>Diagnóstico financeiro preciso</h3>
+              <p className="meta">Entenda exatamente para onde seu dinheiro vai. Orçamentos inteligentes, metas com progresso real e insights personalizados.</p>
             </article>
             <article className="card highlight">
               <p className="highlight-kicker">Mercado</p>
               <h3>Radar quantitativo de ativos</h3>
-              <p className="meta">Analise sinais, risco e momentum para encontrar oportunidades com mais contexto.</p>
+              <p className="meta">Sinais, momentum e volatilidade processados por algoritmos. Encontre oportunidades antes do mercado perceber.</p>
             </article>
             <article className="card highlight">
-              <p className="highlight-kicker">Execucao</p>
-              <h3>Acoes por linguagem natural</h3>
-              <p className="meta">No modo logado, a IA executa comandos como atualizar metas e organizar lancamentos.</p>
+              <p className="highlight-kicker">Execução via IA</p>
+              <h3>Ações por linguagem natural</h3>
+              <p className="meta">Diga "crie meta de viagem com R$8.000" e a IA executa. Sem formulários, sem fricção — só resultados.</p>
             </article>
           </section>
 
@@ -524,8 +526,8 @@ function PublicHome({
                 messages.map((item, index) => <MessageBubble item={item} key={`${item.role}-${index}`} />)
               ) : (
                 <div className="chat-item assistant">
-                  <h3 className="md-h2">Bem-vindo ao econ-ai</h3>
-                  <p className="md-p">Posso te ajudar com planejamento financeiro, cortes de gasto, estrategia de metas e mercado.</p>
+                  <h3 className="md-h2">Olá! Sou o consultor econ-ai</h3>
+                  <p className="md-p">Posso te ajudar com planejamento financeiro, estratégias de economia, análise de investimentos e muito mais. O que você quer resolver hoje?</p>
                 </div>
               )}
             </div>
@@ -534,15 +536,15 @@ function PublicHome({
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Pergunte sobre orçamento, investimentos, reserva de emergência, risco e oportunidades..."
+                placeholder="Ex.: Como montar uma reserva de emergência? Quais ativos têm bom momentum agora? Como reduzir gastos fixos?"
                 required
               />
               <button className="btn" type="submit" disabled={loading}>
-                {loading ? "Analisando..." : "Enviar"}
+                {loading ? "Analisando..." : "Enviar mensagem"}
               </button>
             </form>
 
-            <p className="kbd">Dica: funcionalidades de gestão e execução exigem conta autenticada.</p>
+            <p className="kbd">Dica: crie uma conta para desbloquear dashboard completo, carteira de investimentos e ações executadas pela IA.</p>
           </section>
         </section>
       </main>
@@ -1699,7 +1701,10 @@ export function App() {
   if (sessionLoading) {
     return (
       <div className="public-shell">
-        <div className="card"><p className="empty">Inicializando econ-ai...</p></div>
+        <div className="card" style={{textAlign:"center",padding:"32px 48px",display:"grid",gap:16,justifyItems:"center"}}>
+          <div style={{width:44,height:44,borderRadius:14,background:"linear-gradient(135deg,#00e887,#38bfff)",boxShadow:"0 0 32px rgba(0,232,135,0.4)",animation:"pulse-glow 1.4s ease-in-out infinite"}} />
+          <p className="meta" style={{letterSpacing:"0.12em",textTransform:"uppercase",fontSize:12}}>Inicializando econ-ai...</p>
+        </div>
       </div>
     );
   }
@@ -1754,14 +1759,31 @@ export function App() {
           </div>
 
           <nav className="nav">
-            <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => { setPage("dashboard"); setMobileMenuOpen(false); }}>Dashboard</button>
-            <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => { setPage("transactions"); setMobileMenuOpen(false); }}>Transacoes</button>
-            <button type="button" className={page === "planning" ? "active" : ""} onClick={() => { setPage("planning"); setMobileMenuOpen(false); }}>Orcamentos e Metas</button>
-            <button type="button" className={page === "investments" ? "active" : ""} onClick={() => { setPage("investments"); setMobileMenuOpen(false); }}>Investimentos</button>
-            <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => { setPage("advisor"); setMobileMenuOpen(false); }}>Agente IA</button>
+            <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => { setPage("dashboard"); setMobileMenuOpen(false); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:8,verticalAlign:"middle",opacity:0.8}}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </button>
+            <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => { setPage("transactions"); setMobileMenuOpen(false); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:8,verticalAlign:"middle",opacity:0.8}}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Transações
+            </button>
+            <button type="button" className={page === "planning" ? "active" : ""} onClick={() => { setPage("planning"); setMobileMenuOpen(false); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:8,verticalAlign:"middle",opacity:0.8}}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              Orçamentos e Metas
+            </button>
+            <button type="button" className={page === "investments" ? "active" : ""} onClick={() => { setPage("investments"); setMobileMenuOpen(false); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:8,verticalAlign:"middle",opacity:0.8}}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              Investimentos
+            </button>
+            <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => { setPage("advisor"); setMobileMenuOpen(false); }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:8,verticalAlign:"middle",opacity:0.8}}><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg>
+              Agente IA
+            </button>
           </nav>
 
           <button type="button" className="btn secondary sidebar-logout" onClick={() => { setMobileMenuOpen(false); logout(); }}>Sair</button>
+
+          <p className="leal-credit">Desenvolvido por <a href="https://lealsystems.com.br" target="_blank" rel="noopener noreferrer"><span>Leal Systems</span></a></p>
         </aside>
         <button
           type="button"
@@ -1782,11 +1804,14 @@ export function App() {
             </button>
             <div>
               <h3>{pageTitle}</h3>
-              <p className="meta">Mes de referencia</p>
+              <p className="meta">Olá, {user.fullName.split(" ")[0]} · {user.riskProfile}</p>
             </div>
             <div className="inline-actions">
               <input type="month" value={monthRef} onChange={(event) => setMonthRef(event.target.value)} />
-              <button type="button" className="btn secondary" onClick={() => setRefreshTick((value) => value + 1)}>Atualizar</button>
+              <button type="button" className="btn secondary" onClick={() => setRefreshTick((value) => value + 1)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:6,verticalAlign:"middle"}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Atualizar
+              </button>
             </div>
           </header>
 
@@ -1812,11 +1837,26 @@ export function App() {
         </main>
 
         <nav className="mobile-tabbar">
-          <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
-          <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => setPage("transactions")}>Transacoes</button>
-          <button type="button" className={page === "planning" ? "active" : ""} onClick={() => setPage("planning")}>Metas</button>
-          <button type="button" className={page === "investments" ? "active" : ""} onClick={() => setPage("investments")}>Investir</button>
-          <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => setPage("advisor")}>IA</button>
+          <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",margin:"0 auto 2px"}}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Inicio
+          </button>
+          <button type="button" className={page === "transactions" ? "active" : ""} onClick={() => setPage("transactions")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",margin:"0 auto 2px"}}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Gastos
+          </button>
+          <button type="button" className={page === "planning" ? "active" : ""} onClick={() => setPage("planning")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",margin:"0 auto 2px"}}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Metas
+          </button>
+          <button type="button" className={page === "investments" ? "active" : ""} onClick={() => setPage("investments")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",margin:"0 auto 2px"}}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            Carteira
+          </button>
+          <button type="button" className={page === "advisor" ? "active" : ""} onClick={() => setPage("advisor")}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"block",margin:"0 auto 2px"}}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            IA
+          </button>
         </nav>
       </div>
 

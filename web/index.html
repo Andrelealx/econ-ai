@@ -3,16 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>econ-ai - SaaS Financeiro com IA</title>
+    <meta name="theme-color" content="#020510" />
+    <meta name="description" content="econ-ai — Consultoria financeira pessoal com inteligência artificial. Dashboard, metas, investimentos e análise de mercado." />
+    <title>econ-ai — Finanças com Inteligência Artificial</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
+    <style>
+      html, body { margin: 0; padding: 0; background: #020510; }
+      #app-loading {
+        position: fixed; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 20px;
+        background: #020510;
+        z-index: 9999;
+        transition: opacity 0.4s ease;
+        font-family: 'Space Grotesk', sans-serif;
+      }
+      #app-loading.hidden { opacity: 0; pointer-events: none; }
+      .loading-logo {
+        width: 52px; height: 52px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #00e887, #38bfff);
+        box-shadow: 0 0 40px rgba(0,232,135,0.4);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      .loading-text {
+        color: rgba(232, 240, 255, 0.5);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(0,232,135,0.4); }
+        50%       { transform: scale(1.08); box-shadow: 0 0 60px rgba(0,232,135,0.6); }
+      }
+    </style>
+
     <script type="module" src="/src/main.tsx"></script>
   </head>
   <body>
+    <div id="app-loading">
+      <div class="loading-logo"></div>
+      <span class="loading-text">econ-ai</span>
+    </div>
+
     <div id="root"></div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var root = document.getElementById('root');
+        var loader = document.getElementById('app-loading');
+        var observer = new MutationObserver(function() {
+          if (root.children.length > 0) {
+            loader.classList.add('hidden');
+            setTimeout(function() { loader.remove(); }, 500);
+            observer.disconnect();
+          }
+        });
+        observer.observe(root, { childList: true });
+        setTimeout(function() {
+          loader.classList.add('hidden');
+          setTimeout(function() { loader.remove(); }, 500);
+        }, 3000);
+      });
+    </script>
   </body>
 </html>
